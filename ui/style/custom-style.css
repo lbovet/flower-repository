@@ -23,7 +23,7 @@
     display: none;
 }
 
-.swagger-ui-wrap {
+.swagger-section .swagger-ui-wrap {
     min-width: 0px;
     margin-left: 20px;
     margin-right: 20px;
