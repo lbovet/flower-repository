@@ -1,0 +1,43 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Flower Delivery Stream API",
+    "version": "0.1.0-rc.1"
+  },
+  "paths": {
+    "flower.delivery.Order-event": {
+      "get": {
+        "tags": [
+          "flower.delivery"
+        ],
+        "responses": {
+          "200": {
+            "schema": {
+              "$ref": "#/definitions/OrderEvent"
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "DateTime": {
+      "type": "string",
+      "description": "<a href=\"https://swagger.io/docs/specification/data-models/data-types/#string\">String @format date-time</a>,\nas defined by <a href=\"https://tools.ietf.org/html/rfc3339#section-5.6\">RFC 3339, section 5.6</a>,\nfor example: <code>2014-05-22T10:42:42.542+00:00</code>.",
+      "format": "date-time"
+    },
+    "OrderEvent": {
+      "type": "object",
+      "properties": {
+        "timestamp": {
+          "$ref": "#/definitions/DateTime"
+        }
+      },
+      "required": [
+        "timestamp"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema"
+}
