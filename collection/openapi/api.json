@@ -1,0 +1,38 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Delivery Collection Stream API",
+    "description": "Stream of Collection events processed",
+    "contact": {
+      "name": "wiesta"
+    },
+    "version": "1.0.2"
+  },
+  "host": "server:8080",
+  "basePath": "Kafka",
+  "paths": {
+    "logistics.delivery.collection.Mailpiece-event": {
+      "get": {
+        "summary": "Topic for delivery collection mailpiece event",
+        "description": "Data provided by NEMO-ZUST for captured collection event for a mail piece.",
+        "tags": [
+          "logistics.delivery.collection"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "$ref": "#/definitions/MailpieceEvent"
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "$ref": [
+      "../ts/mailpiece.ts"
+    ]
+  }
+}

@@ -1,0 +1,596 @@
+swagger: '2.0'
+info:
+  title: 'Delivery Collection Stream API'
+  description: 'Stream of Collection events processed'
+  contact:
+    name: wiesta
+  version: 1.0.2
+host: 'server:8080'
+basePath: Kafka
+paths:
+  logistics.delivery.collection.Mailpiece-event:
+    get:
+      summary: 'Topic for delivery collection mailpiece event'
+      description: 'Data provided by NEMO-ZUST for captured collection event for a mail piece.'
+      tags:
+        - logistics.delivery.collection
+      responses:
+        '200':
+          description: OK
+          schema: {type: array, $ref: '#/definitions/MailpieceEvent'}
+definitions:
+  CapturingTypeWithInfoScan:
+    type: string
+    enum:
+      - SCAN
+      - MANUAL
+      - INFOSCAN
+    description: "Possible values:\nSCAN (1)\nMANUAL (2)\nINFOSCAN"
+    $ref: CapturingTypeWithInfoScan
+  CapturingType:
+    type: string
+    enum:
+      - SCAN
+      - MANUAL
+    description: "Possible values:\nSCAN (1)\nMANUAL (2)"
+    $ref: CapturingType
+  DateTime:
+    type: string
+    description: "<a href=\"https://swagger.io/docs/specification/data-models/data-types/#string\">String @format date-time</a>,\nas defined by <a href=\"https://tools.ietf.org/html/rfc3339#section-5.6\">RFC 3339, section 5.6</a>,\nfor example: <code>2014-05-22T10:42:42.542+00:00</code>."
+    format: date-time
+    $ref: DateTime
+  CollectedEvent:
+    type: object
+    properties:
+      timestamp:
+        description: 'The timestamp the event was captured.'
+        type: string
+        format: date-time
+      capturingType:
+        description: 'The input method used to capture the value'
+        type: string
+        enum:
+          - SCAN
+          - MANUAL
+        id: CapturingType
+      deliveryArea:
+        type: string
+        description: "Number of the delivery area, e.g. 010.\nMissing digits are completed with leading 0"
+        minLength: 3
+        maxLength: 3
+      distributionBasePostcode6:
+        type: string
+        description: "The postal code 6 numbers identifying the distribution base,\ne.g. 821070."
+        minLength: 6
+        maxLength: 6
+      personalNumber:
+        type: string
+        description: "The employee's personal number, e.g. 09000521.\nThe employeeId contains 8 characters (all digits).\nMissing digits are completed with leading 0"
+        pattern: '\d{8}'
+      productCodeCaptures:
+        type: array
+        items:
+          type: object
+          properties: {productCode: {type: string, description: 'The barcode''s value of the additional service aka. PRZL', maxLength: 5}, capturingType: {description: 'The input method used to capture the value', type: string, enum: [SCAN, MANUAL, INFOSCAN], id: CapturingTypeWithInfoScan}}
+          required: [productCode, capturingType]
+          additionalProperties: false
+          $ref: ProductCodeCaptures
+        description: 'The captured additional products on the mail piece'
+      type:
+        type: boolean
+        description: 'Pickup successful with barcode (1)'
+      orderId:
+        type: string
+        pattern: '^[0-9]{0,19}$'
+      mailpieceDataId:
+        type: string
+        description: "ID to the mail piece data on which the delivery was made\nNote: Previously, the attribute name \"infoScanRecordId\" was used for this."
+        maxLength: 15
+      multiCapture:
+        type: boolean
+        description: 'Confirmation by the user that the same mail piece id needs to be captured multiple time, e.g. two mail pieces with the same id.'
+      dispobox:
+        type: object
+        properties:
+          number: {type: integer, description: 'The dispobox number', maxLength: 8}
+          coverNumber: {type: integer, description: 'The dispobox cover number', maxLength: 8}
+        required:
+          - number
+        additionalProperties: false
+        $ref: Dispobox
+      notification:
+        type: object
+        properties:
+          phoneNumber: {type: string, description: 'Called phone number'}
+          notNotifiedReason: {description: 'Called phone number', type: string, enum: [AGREEMENT_WITH_RECEIVER, CALL_UNSUCCESSFUL, NO_OR_WRONG_PHONE_NUMBER, DELIVERY_INSTRUCTION_ONLY_SEEN_AT_HANDOVER, TRIED_OTHER_NUMBER, USED_OTHER_PHONE], id: NotNotifiedReason}
+        required:
+          - phoneNumber
+        additionalProperties: false
+        $ref: Notification
+      deliveryOnFloor:
+        type: object
+        properties:
+          deliveryAttempt: {type: boolean, description: 'Delivery staff delivered / tried to deliver sending on floor'}
+          notDeliveredReason: {description: 'If deliveryAttempt = false, reason must be specified', type: string, enum: [DOOR_CLOSED, CUSTOMER_ABSENT, DELIVERY_INSTRUCTION_ONLY_SEEN_AT_DELIVERY, OTHER_REASONS], id: NotDeliveredReason}
+        required:
+          - deliveryAttempt
+        additionalProperties: false
+        $ref: DeliveryOnFloor
+      pickpost:
+        type: object
+        properties:
+          distributionBasePostcode6: {type: string, description: 'Pickpost office zip', maxLength: 6}
+        required:
+          - distributionBasePostcode6
+        additionalProperties: false
+        $ref: Pickpost
+      postCapturing:
+        description: 'Post capturing when something did not work out on the tour. Takes place in the base.'
+        type: object
+        properties:
+          timestamp: {description: 'The timestamp the event initialized', type: string, format: date-time}
+          deliveryArea: {type: string, description: 'Tour, district or service depending on process and organizational unit', minLength: 3, maxLength: 3}
+          personalNumber: {type: string, description: 'Employee personal number', maxLength: 8}
+          distributionBasePostcode6: {type: string, description: 'Post office zip', minLength: 6, maxLength: 6}
+        required:
+          - timestamp
+          - deliveryArea
+        additionalProperties: false
+        id: PostCapturing
+      overwrite:
+        type: object
+        properties:
+          deliveryArea: {type: string, description: "If value is available, it overwrite *.deliveryArea\nNumber of the delivery area, e.g. 010.\nMissing digits are completed with leading 0", minLength: 3, maxLength: 3}
+          distributionBasePostcode6: {type: string, description: "If value is available, it overwrite *.distributionBasePostcode6\nThe postal code 6 numbers identifying the distribution base,\ne.g. 821070.", minLength: 6, maxLength: 6}
+        additionalProperties: false
+        $ref: Overwrite
+      coordinates:
+        type: object
+        properties:
+          longitude: {type: number, maxLength: 9}
+          latitude: {type: number, maxLength: 9}
+          accuracy: {type: number, description: "The accuracy of the supplied coordinates in meters.\nIf we form a circle with a radius of collected.coordinates.geoPositionAccuracy meters around the point collected.coordinates.geoPositionX / collected.coordinates.geoPositionY, then the true location is in this circle with 68% probability. Probably a normal distribution, i.e. with probability 95% in the circle with radius 2 * collected.coordinates.geoPositionAccuracy.\nThe value 0.0 means that the precision is unknown.\nSee also https://developer.android.com/reference/android/location/Location#getAccuracy()", maxLength: 9}
+        required:
+          - longitude
+          - latitude
+          - accuracy
+        additionalProperties: false
+        $ref: Coordinates
+    required:
+      - timestamp
+      - capturingType
+      - deliveryArea
+      - distributionBasePostcode6
+      - personalNumber
+      - type
+    additionalProperties: false
+    $ref: CollectedEvent
+  CollectionFailedEvent:
+    type: object
+    properties:
+      timestamp:
+        description: 'The timestamp the event was captured.'
+        type: string
+        format: date-time
+      capturingType:
+        description: 'The input method used to capture the value'
+        type: string
+        enum:
+          - SCAN
+          - MANUAL
+        id: CapturingType
+      deliveryArea:
+        type: string
+        description: "Number of the delivery area, e.g. 010.\nMissing digits are completed with leading 0"
+        minLength: 3
+        maxLength: 3
+      distributionBasePostcode6:
+        type: string
+        description: "The postal code 6 numbers identifying the distribution base,\ne.g. 821070."
+        minLength: 6
+        maxLength: 6
+      personalNumber:
+        type: string
+        description: "The employee's personal number, e.g. 09000521.\nThe employeeId contains 8 characters (all digits).\nMissing digits are completed with leading 0"
+        pattern: '\d{8}'
+      productCodeCaptures:
+        type: array
+        items:
+          type: object
+          properties: {productCode: {type: string, description: 'The barcode''s value of the additional service aka. PRZL', maxLength: 5}, capturingType: {description: 'The input method used to capture the value', type: string, enum: [SCAN, MANUAL, INFOSCAN], id: CapturingTypeWithInfoScan}}
+          required: [productCode, capturingType]
+          additionalProperties: false
+          $ref: ProductCodeCaptures
+        description: 'The captured additional products on the mail piece'
+      failureReason:
+        description: 'Reason for the failure'
+        type: string
+        enum:
+          - CUSTOMER_NOT_PRESENT
+          - CUSTOMER_DENIES_DELIVERY
+          - UNKNOWN_ADDRESS
+          - NOT_AT_APPOINTED_PLACE
+          - NOT_PREPAID
+          - INSUFFICIENTLY_PACKED
+          - CONTENT_OVERSIZE
+          - ORDER_UNKNOWN_AT_CUSTOMER
+          - FAILED_TO_RELEASE_OUT_OF_LOCKED_BOX
+          - NOT_PRESENT
+          - OVERSIZE
+          - NEW_POSTING_WITH_OVERSIZE
+        id: FailureReason
+      orderId:
+        type: string
+        pattern: '^[0-9]{0,19}$'
+      mailpieceDataId:
+        type: string
+        description: "ID to the mail piece data on which the delivery was made\nNote: Previously, the attribute name \"infoScanRecordId\" was used for this."
+        maxLength: 15
+      multiCapture:
+        type: boolean
+        description: 'Confirmation by the user that the same mail piece id needs to be captured multiple time, e.g. two mail pieces with the same id.'
+      dispobox:
+        type: object
+        properties:
+          number: {type: integer, description: 'The dispobox number', maxLength: 8}
+          coverNumber: {type: integer, description: 'The dispobox cover number', maxLength: 8}
+        required:
+          - number
+        additionalProperties: false
+        $ref: Dispobox
+      notification:
+        type: object
+        properties:
+          phoneNumber: {type: string, description: 'Called phone number'}
+          notNotifiedReason: {description: 'Called phone number', type: string, enum: [AGREEMENT_WITH_RECEIVER, CALL_UNSUCCESSFUL, NO_OR_WRONG_PHONE_NUMBER, DELIVERY_INSTRUCTION_ONLY_SEEN_AT_HANDOVER, TRIED_OTHER_NUMBER, USED_OTHER_PHONE], id: NotNotifiedReason}
+        required:
+          - phoneNumber
+        additionalProperties: false
+        $ref: Notification
+      deliveryOnFloor:
+        type: object
+        properties:
+          deliveryAttempt: {type: boolean, description: 'Delivery staff delivered / tried to deliver sending on floor'}
+          notDeliveredReason: {description: 'If deliveryAttempt = false, reason must be specified', type: string, enum: [DOOR_CLOSED, CUSTOMER_ABSENT, DELIVERY_INSTRUCTION_ONLY_SEEN_AT_DELIVERY, OTHER_REASONS], id: NotDeliveredReason}
+        required:
+          - deliveryAttempt
+        additionalProperties: false
+        $ref: DeliveryOnFloor
+      pickpost:
+        type: object
+        properties:
+          distributionBasePostcode6: {type: string, description: 'Pickpost office zip', maxLength: 6}
+        required:
+          - distributionBasePostcode6
+        additionalProperties: false
+        $ref: Pickpost
+      postCapturing:
+        description: 'Post capturing when something did not work out on the tour. Takes place in the base.'
+        type: object
+        properties:
+          timestamp: {description: 'The timestamp the event initialized', type: string, format: date-time}
+          deliveryArea: {type: string, description: 'Tour, district or service depending on process and organizational unit', minLength: 3, maxLength: 3}
+          personalNumber: {type: string, description: 'Employee personal number', maxLength: 8}
+          distributionBasePostcode6: {type: string, description: 'Post office zip', minLength: 6, maxLength: 6}
+        required:
+          - timestamp
+          - deliveryArea
+        additionalProperties: false
+        id: PostCapturing
+      overwrite:
+        type: object
+        properties:
+          deliveryArea: {type: string, description: "If value is available, it overwrite *.deliveryArea\nNumber of the delivery area, e.g. 010.\nMissing digits are completed with leading 0", minLength: 3, maxLength: 3}
+          distributionBasePostcode6: {type: string, description: "If value is available, it overwrite *.distributionBasePostcode6\nThe postal code 6 numbers identifying the distribution base,\ne.g. 821070.", minLength: 6, maxLength: 6}
+        additionalProperties: false
+        $ref: Overwrite
+      coordinates:
+        type: object
+        properties:
+          longitude: {type: number, maxLength: 9}
+          latitude: {type: number, maxLength: 9}
+          accuracy: {type: number, description: "The accuracy of the supplied coordinates in meters.\nIf we form a circle with a radius of collected.coordinates.geoPositionAccuracy meters around the point collected.coordinates.geoPositionX / collected.coordinates.geoPositionY, then the true location is in this circle with 68% probability. Probably a normal distribution, i.e. with probability 95% in the circle with radius 2 * collected.coordinates.geoPositionAccuracy.\nThe value 0.0 means that the precision is unknown.\nSee also https://developer.android.com/reference/android/location/Location#getAccuracy()", maxLength: 9}
+        required:
+          - longitude
+          - latitude
+          - accuracy
+        additionalProperties: false
+        $ref: Coordinates
+    required:
+      - timestamp
+      - capturingType
+      - deliveryArea
+      - distributionBasePostcode6
+      - personalNumber
+      - failureReason
+    additionalProperties: false
+    $ref: CollectionFailedEvent
+  Coordinates:
+    type: object
+    properties:
+      longitude:
+        type: number
+        maxLength: 9
+      latitude:
+        type: number
+        maxLength: 9
+      accuracy:
+        type: number
+        description: "The accuracy of the supplied coordinates in meters.\nIf we form a circle with a radius of collected.coordinates.geoPositionAccuracy meters around the point collected.coordinates.geoPositionX / collected.coordinates.geoPositionY, then the true location is in this circle with 68% probability. Probably a normal distribution, i.e. with probability 95% in the circle with radius 2 * collected.coordinates.geoPositionAccuracy.\nThe value 0.0 means that the precision is unknown.\nSee also https://developer.android.com/reference/android/location/Location#getAccuracy()"
+        maxLength: 9
+    required:
+      - longitude
+      - latitude
+      - accuracy
+    additionalProperties: false
+    $ref: Coordinates
+  DeliveryOnFloor:
+    type: object
+    properties:
+      deliveryAttempt:
+        type: boolean
+        description: 'Delivery staff delivered / tried to deliver sending on floor'
+      notDeliveredReason:
+        description: 'If deliveryAttempt = false, reason must be specified'
+        type: string
+        enum:
+          - DOOR_CLOSED
+          - CUSTOMER_ABSENT
+          - DELIVERY_INSTRUCTION_ONLY_SEEN_AT_DELIVERY
+          - OTHER_REASONS
+        id: NotDeliveredReason
+    required:
+      - deliveryAttempt
+    additionalProperties: false
+    $ref: DeliveryOnFloor
+  Dispobox:
+    type: object
+    properties:
+      number:
+        type: integer
+        description: 'The dispobox number'
+        maxLength: 8
+      coverNumber:
+        type: integer
+        description: 'The dispobox cover number'
+        maxLength: 8
+    required:
+      - number
+    additionalProperties: false
+    $ref: Dispobox
+  FailureReason:
+    type: string
+    enum:
+      - CUSTOMER_NOT_PRESENT
+      - CUSTOMER_DENIES_DELIVERY
+      - UNKNOWN_ADDRESS
+      - NOT_AT_APPOINTED_PLACE
+      - NOT_PREPAID
+      - INSUFFICIENTLY_PACKED
+      - CONTENT_OVERSIZE
+      - ORDER_UNKNOWN_AT_CUSTOMER
+      - FAILED_TO_RELEASE_OUT_OF_LOCKED_BOX
+      - NOT_PRESENT
+      - OVERSIZE
+      - NEW_POSTING_WITH_OVERSIZE
+    description: "Possible values:\nCUSTOMER_NOT_PRESENT -> Kunde nicht anwesend (1)\nCUSTOMER_DENIES_DELIVERY -> Kunde lehnt Uebergabe ab (2)\nUNKNOWN_ADDRESS -> Adresse unbekannt (4)\nNOT_AT_APPOINTED_PLACE -> Sendung nicht am vereinbarten Ort (5)\nNOT_PREPAID -> Sendung nicht frankiert (6)\nINSUFFICIENTLY_PACKED -> Ware ungenuegend verpackt (7)\nCONTENT_OVERSIZE -> Ware zu gross fuer Verpackung (8)\nORDER_UNKNOWN_AT_CUSTOMER -> Abholauftrag bei Kunden unbekannt (9)\nFAILED_TO_RELEASE_OUT_OF_LOCKED_BOX -> Ausloesung aus abschliessbarer Box fehlgeschlagen (10)\nNOT_PRESENT -> Sendung nicht vorhanden (20)\nOVERSIZE -> Sendung mit Übermass (21)\nNEW_POSTING_WITH_OVERSIZE -> Neuaufgabe Sendung mit Übermass (22)"
+    $ref: FailureReason
+  MailpieceEvent:
+    type: object
+    properties:
+      mailpieceId:
+        type: string
+        description: 'The consignments national or international id, primary key 🔑.'
+        pattern: '\d{18}|([A-Z]{2}\d{9}[A-Z]{2})'
+      collected:
+        description: 'Collected successful event for a mail piece'
+        type: object
+        properties:
+          timestamp: {description: 'The timestamp the event was captured.', type: string, format: date-time}
+          capturingType: {description: 'The input method used to capture the value', type: string, enum: [SCAN, MANUAL], id: CapturingType}
+          deliveryArea: {type: string, description: "Number of the delivery area, e.g. 010.\nMissing digits are completed with leading 0", minLength: 3, maxLength: 3}
+          distributionBasePostcode6: {type: string, description: "The postal code 6 numbers identifying the distribution base,\ne.g. 821070.", minLength: 6, maxLength: 6}
+          personalNumber: {type: string, description: "The employee's personal number, e.g. 09000521.\nThe employeeId contains 8 characters (all digits).\nMissing digits are completed with leading 0", pattern: '\d{8}'}
+          productCodeCaptures: {type: array, items: {type: object, properties: {productCode: {type: string, description: 'The barcode''s value of the additional service aka. PRZL', maxLength: 5}, capturingType: {description: 'The input method used to capture the value', type: string, enum: [SCAN, MANUAL, INFOSCAN], id: CapturingTypeWithInfoScan}}, required: [productCode, capturingType], additionalProperties: false, $ref: ProductCodeCaptures}, description: 'The captured additional products on the mail piece'}
+          type: {type: boolean, description: 'Pickup successful with barcode (1)'}
+          orderId: {type: string, pattern: '^[0-9]{0,19}$'}
+          mailpieceDataId: {type: string, description: "ID to the mail piece data on which the delivery was made\nNote: Previously, the attribute name \"infoScanRecordId\" was used for this.", maxLength: 15}
+          multiCapture: {type: boolean, description: 'Confirmation by the user that the same mail piece id needs to be captured multiple time, e.g. two mail pieces with the same id.'}
+          dispobox: {type: object, properties: {number: {type: integer, description: 'The dispobox number', maxLength: 8}, coverNumber: {type: integer, description: 'The dispobox cover number', maxLength: 8}}, required: [number], additionalProperties: false, $ref: Dispobox}
+          notification: {type: object, properties: {phoneNumber: {type: string, description: 'Called phone number'}, notNotifiedReason: {description: 'Called phone number', type: string, enum: [AGREEMENT_WITH_RECEIVER, CALL_UNSUCCESSFUL, NO_OR_WRONG_PHONE_NUMBER, DELIVERY_INSTRUCTION_ONLY_SEEN_AT_HANDOVER, TRIED_OTHER_NUMBER, USED_OTHER_PHONE], id: NotNotifiedReason}}, required: [phoneNumber], additionalProperties: false, $ref: Notification}
+          deliveryOnFloor: {type: object, properties: {deliveryAttempt: {type: boolean, description: 'Delivery staff delivered / tried to deliver sending on floor'}, notDeliveredReason: {description: 'If deliveryAttempt = false, reason must be specified', type: string, enum: [DOOR_CLOSED, CUSTOMER_ABSENT, DELIVERY_INSTRUCTION_ONLY_SEEN_AT_DELIVERY, OTHER_REASONS], id: NotDeliveredReason}}, required: [deliveryAttempt], additionalProperties: false, $ref: DeliveryOnFloor}
+          pickpost: {type: object, properties: {distributionBasePostcode6: {type: string, description: 'Pickpost office zip', maxLength: 6}}, required: [distributionBasePostcode6], additionalProperties: false, $ref: Pickpost}
+          postCapturing: {description: 'Post capturing when something did not work out on the tour. Takes place in the base.', type: object, properties: {timestamp: {description: 'The timestamp the event initialized', type: string, format: date-time}, deliveryArea: {type: string, description: 'Tour, district or service depending on process and organizational unit', minLength: 3, maxLength: 3}, personalNumber: {type: string, description: 'Employee personal number', maxLength: 8}, distributionBasePostcode6: {type: string, description: 'Post office zip', minLength: 6, maxLength: 6}}, required: [timestamp, deliveryArea], additionalProperties: false, id: PostCapturing}
+          overwrite: {type: object, properties: {deliveryArea: {type: string, description: "If value is available, it overwrite *.deliveryArea\nNumber of the delivery area, e.g. 010.\nMissing digits are completed with leading 0", minLength: 3, maxLength: 3}, distributionBasePostcode6: {type: string, description: "If value is available, it overwrite *.distributionBasePostcode6\nThe postal code 6 numbers identifying the distribution base,\ne.g. 821070.", minLength: 6, maxLength: 6}}, additionalProperties: false, $ref: Overwrite}
+          coordinates: {type: object, properties: {longitude: {type: number, maxLength: 9}, latitude: {type: number, maxLength: 9}, accuracy: {type: number, description: "The accuracy of the supplied coordinates in meters.\nIf we form a circle with a radius of collected.coordinates.geoPositionAccuracy meters around the point collected.coordinates.geoPositionX / collected.coordinates.geoPositionY, then the true location is in this circle with 68% probability. Probably a normal distribution, i.e. with probability 95% in the circle with radius 2 * collected.coordinates.geoPositionAccuracy.\nThe value 0.0 means that the precision is unknown.\nSee also https://developer.android.com/reference/android/location/Location#getAccuracy()", maxLength: 9}}, required: [longitude, latitude, accuracy], additionalProperties: false, $ref: Coordinates}
+        required:
+          - timestamp
+          - capturingType
+          - deliveryArea
+          - distributionBasePostcode6
+          - personalNumber
+          - type
+        additionalProperties: false
+        id: CollectedEvent
+      collectionFailed:
+        description: 'Collected failed event for a mail piece'
+        type: object
+        properties:
+          timestamp: {description: 'The timestamp the event was captured.', type: string, format: date-time}
+          capturingType: {description: 'The input method used to capture the value', type: string, enum: [SCAN, MANUAL], id: CapturingType}
+          deliveryArea: {type: string, description: "Number of the delivery area, e.g. 010.\nMissing digits are completed with leading 0", minLength: 3, maxLength: 3}
+          distributionBasePostcode6: {type: string, description: "The postal code 6 numbers identifying the distribution base,\ne.g. 821070.", minLength: 6, maxLength: 6}
+          personalNumber: {type: string, description: "The employee's personal number, e.g. 09000521.\nThe employeeId contains 8 characters (all digits).\nMissing digits are completed with leading 0", pattern: '\d{8}'}
+          productCodeCaptures: {type: array, items: {type: object, properties: {productCode: {type: string, description: 'The barcode''s value of the additional service aka. PRZL', maxLength: 5}, capturingType: {description: 'The input method used to capture the value', type: string, enum: [SCAN, MANUAL, INFOSCAN], id: CapturingTypeWithInfoScan}}, required: [productCode, capturingType], additionalProperties: false, $ref: ProductCodeCaptures}, description: 'The captured additional products on the mail piece'}
+          failureReason: {description: 'Reason for the failure', type: string, enum: [CUSTOMER_NOT_PRESENT, CUSTOMER_DENIES_DELIVERY, UNKNOWN_ADDRESS, NOT_AT_APPOINTED_PLACE, NOT_PREPAID, INSUFFICIENTLY_PACKED, CONTENT_OVERSIZE, ORDER_UNKNOWN_AT_CUSTOMER, FAILED_TO_RELEASE_OUT_OF_LOCKED_BOX, NOT_PRESENT, OVERSIZE, NEW_POSTING_WITH_OVERSIZE], id: FailureReason}
+          orderId: {type: string, pattern: '^[0-9]{0,19}$'}
+          mailpieceDataId: {type: string, description: "ID to the mail piece data on which the delivery was made\nNote: Previously, the attribute name \"infoScanRecordId\" was used for this.", maxLength: 15}
+          multiCapture: {type: boolean, description: 'Confirmation by the user that the same mail piece id needs to be captured multiple time, e.g. two mail pieces with the same id.'}
+          dispobox: {type: object, properties: {number: {type: integer, description: 'The dispobox number', maxLength: 8}, coverNumber: {type: integer, description: 'The dispobox cover number', maxLength: 8}}, required: [number], additionalProperties: false, $ref: Dispobox}
+          notification: {type: object, properties: {phoneNumber: {type: string, description: 'Called phone number'}, notNotifiedReason: {description: 'Called phone number', type: string, enum: [AGREEMENT_WITH_RECEIVER, CALL_UNSUCCESSFUL, NO_OR_WRONG_PHONE_NUMBER, DELIVERY_INSTRUCTION_ONLY_SEEN_AT_HANDOVER, TRIED_OTHER_NUMBER, USED_OTHER_PHONE], id: NotNotifiedReason}}, required: [phoneNumber], additionalProperties: false, $ref: Notification}
+          deliveryOnFloor: {type: object, properties: {deliveryAttempt: {type: boolean, description: 'Delivery staff delivered / tried to deliver sending on floor'}, notDeliveredReason: {description: 'If deliveryAttempt = false, reason must be specified', type: string, enum: [DOOR_CLOSED, CUSTOMER_ABSENT, DELIVERY_INSTRUCTION_ONLY_SEEN_AT_DELIVERY, OTHER_REASONS], id: NotDeliveredReason}}, required: [deliveryAttempt], additionalProperties: false, $ref: DeliveryOnFloor}
+          pickpost: {type: object, properties: {distributionBasePostcode6: {type: string, description: 'Pickpost office zip', maxLength: 6}}, required: [distributionBasePostcode6], additionalProperties: false, $ref: Pickpost}
+          postCapturing: {description: 'Post capturing when something did not work out on the tour. Takes place in the base.', type: object, properties: {timestamp: {description: 'The timestamp the event initialized', type: string, format: date-time}, deliveryArea: {type: string, description: 'Tour, district or service depending on process and organizational unit', minLength: 3, maxLength: 3}, personalNumber: {type: string, description: 'Employee personal number', maxLength: 8}, distributionBasePostcode6: {type: string, description: 'Post office zip', minLength: 6, maxLength: 6}}, required: [timestamp, deliveryArea], additionalProperties: false, id: PostCapturing}
+          overwrite: {type: object, properties: {deliveryArea: {type: string, description: "If value is available, it overwrite *.deliveryArea\nNumber of the delivery area, e.g. 010.\nMissing digits are completed with leading 0", minLength: 3, maxLength: 3}, distributionBasePostcode6: {type: string, description: "If value is available, it overwrite *.distributionBasePostcode6\nThe postal code 6 numbers identifying the distribution base,\ne.g. 821070.", minLength: 6, maxLength: 6}}, additionalProperties: false, $ref: Overwrite}
+          coordinates: {type: object, properties: {longitude: {type: number, maxLength: 9}, latitude: {type: number, maxLength: 9}, accuracy: {type: number, description: "The accuracy of the supplied coordinates in meters.\nIf we form a circle with a radius of collected.coordinates.geoPositionAccuracy meters around the point collected.coordinates.geoPositionX / collected.coordinates.geoPositionY, then the true location is in this circle with 68% probability. Probably a normal distribution, i.e. with probability 95% in the circle with radius 2 * collected.coordinates.geoPositionAccuracy.\nThe value 0.0 means that the precision is unknown.\nSee also https://developer.android.com/reference/android/location/Location#getAccuracy()", maxLength: 9}}, required: [longitude, latitude, accuracy], additionalProperties: false, $ref: Coordinates}
+        required:
+          - timestamp
+          - capturingType
+          - deliveryArea
+          - distributionBasePostcode6
+          - personalNumber
+          - failureReason
+        additionalProperties: false
+        id: CollectionFailedEvent
+      metadata:
+        description: 'This metadata is only used by legacy systems, new consumers must not rely on it.'
+        type: object
+        properties:
+          appVersion: {type: string, description: 'The version of the app creating the event', maxLength: 50}
+          deviceId: {type: string, description: 'The device id', maxLength: 15}
+          appId: {type: string, description: 'The id of the app creating the event', maxLength: 10}
+          serverTimestamp: {description: 'The timestamp the request was received by NEMO backend', type: string, format: date-time}
+          techId: {type: string, description: "Id of the event [deviceId+appId+TimeStamp (LONGINT(64))],\ne.g. 123456789012345back1349333576093", maxLength: 38}
+        additionalProperties: false
+        id: Metadata
+    required:
+      - mailpieceId
+    additionalProperties: false
+  Metadata:
+    type: object
+    properties:
+      appVersion:
+        type: string
+        description: 'The version of the app creating the event'
+        maxLength: 50
+      deviceId:
+        type: string
+        description: 'The device id'
+        maxLength: 15
+      appId:
+        type: string
+        description: 'The id of the app creating the event'
+        maxLength: 10
+      serverTimestamp:
+        description: 'The timestamp the request was received by NEMO backend'
+        type: string
+        format: date-time
+      techId:
+        type: string
+        description: "Id of the event [deviceId+appId+TimeStamp (LONGINT(64))],\ne.g. 123456789012345back1349333576093"
+        maxLength: 38
+    additionalProperties: false
+    $ref: Metadata
+  NotDeliveredReason:
+    type: string
+    enum:
+      - DOOR_CLOSED
+      - CUSTOMER_ABSENT
+      - DELIVERY_INSTRUCTION_ONLY_SEEN_AT_DELIVERY
+      - OTHER_REASONS
+    description: "Possible values:\nDOOR_CLOSED -> Front door closed (1)\nCUSTOMER_ABSENT -> Customer absent (2)\nDELIVERY_INSTRUCTION_ONLY_SEEN_AT_DELIVERY -> Delivery instruction (Zustellanweisung - ZAW) not seen until delivery (3)\nOTHER_REASONS -> Other reasons (4)"
+    $ref: NotDeliveredReason
+  NotNotifiedReason:
+    type: string
+    enum:
+      - AGREEMENT_WITH_RECEIVER
+      - CALL_UNSUCCESSFUL
+      - NO_OR_WRONG_PHONE_NUMBER
+      - DELIVERY_INSTRUCTION_ONLY_SEEN_AT_HANDOVER
+      - TRIED_OTHER_NUMBER
+      - USED_OTHER_PHONE
+    description: "Possible values:\nAGREEMENT_WITH_RECEIVER -> Agreement with recipient (1)\nCALL_UNSUCCESSFUL -> Call unsuccessful (2)\nNO_OR_WRONG_PHONE_NUMBER -> No or wrong phone number (3)\nDELIVERY_INSTRUCTION_ONLY_SEEN_AT_HANDOVER -> Delivery instruction (Zustellanweisung - ZAW) not seen until delivery (4)\nTRIED_OTHER_NUMBER -> Tried another number (5)\nUSED_OTHER_PHONE -> Other cell phone used (6)"
+    $ref: NotNotifiedReason
+  Notification:
+    type: object
+    properties:
+      phoneNumber:
+        type: string
+        description: 'Called phone number'
+      notNotifiedReason:
+        description: 'Called phone number'
+        type: string
+        enum:
+          - AGREEMENT_WITH_RECEIVER
+          - CALL_UNSUCCESSFUL
+          - NO_OR_WRONG_PHONE_NUMBER
+          - DELIVERY_INSTRUCTION_ONLY_SEEN_AT_HANDOVER
+          - TRIED_OTHER_NUMBER
+          - USED_OTHER_PHONE
+        id: NotNotifiedReason
+    required:
+      - phoneNumber
+    additionalProperties: false
+    $ref: Notification
+  Overwrite:
+    type: object
+    properties:
+      deliveryArea:
+        type: string
+        description: "If value is available, it overwrite *.deliveryArea\nNumber of the delivery area, e.g. 010.\nMissing digits are completed with leading 0"
+        minLength: 3
+        maxLength: 3
+      distributionBasePostcode6:
+        type: string
+        description: "If value is available, it overwrite *.distributionBasePostcode6\nThe postal code 6 numbers identifying the distribution base,\ne.g. 821070."
+        minLength: 6
+        maxLength: 6
+    additionalProperties: false
+    $ref: Overwrite
+  Pickpost:
+    type: object
+    properties:
+      distributionBasePostcode6:
+        type: string
+        description: 'Pickpost office zip'
+        maxLength: 6
+    required:
+      - distributionBasePostcode6
+    additionalProperties: false
+    $ref: Pickpost
+  PostCapturing:
+    type: object
+    properties:
+      timestamp:
+        description: 'The timestamp the event initialized'
+        type: string
+        format: date-time
+      deliveryArea:
+        type: string
+        description: 'Tour, district or service depending on process and organizational unit'
+        minLength: 3
+        maxLength: 3
+      personalNumber:
+        type: string
+        description: 'Employee personal number'
+        maxLength: 8
+      distributionBasePostcode6:
+        type: string
+        description: 'Post office zip'
+        minLength: 6
+        maxLength: 6
+    required:
+      - timestamp
+      - deliveryArea
+    additionalProperties: false
+    $ref: PostCapturing
+  ProductCodeCaptures:
+    type: object
+    properties:
+      productCode:
+        type: string
+        description: 'The barcode''s value of the additional service aka. PRZL'
+        maxLength: 5
+      capturingType:
+        description: 'The input method used to capture the value'
+        type: string
+        enum:
+          - SCAN
+          - MANUAL
+          - INFOSCAN
+        id: CapturingTypeWithInfoScan
+    required:
+      - productCode
+      - capturingType
+    additionalProperties: false
+    $ref: ProductCodeCaptures
