@@ -2,8 +2,6 @@ swagger: '2.0'
 info:
   title: 'Delivery Collection Stream API'
   description: 'Stream of Collection events processed'
-  contact:
-    name: wiesta
   version: 1.0.2
 host: 'server:8080'
 basePath: Kafka

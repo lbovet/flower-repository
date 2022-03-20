@@ -2,6 +2,9 @@ import { Metadata } from './metadata'
 import { CollectedEvent } from './collectedEvent'
 import { CollectionFailedEvent } from './collectionFailedEvent'
 
+/**
+ * Follows the JSON Event pattern. Only one of the event field must be set.
+ */
 export interface MailpieceEvent {
     /**
      * The consignments national or international id, primary key 🔑.
@@ -17,8 +20,4 @@ export interface MailpieceEvent {
      * Collected failed event for a mail piece
      */
     collectionFailed?: CollectionFailedEvent
-    /**
-     * This metadata is only used by legacy systems, new consumers must not rely on it.
-     */
-    metadata?: Metadata
 }
